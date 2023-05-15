@@ -16,6 +16,21 @@ devices = {
     "螢幕開關": "switch.ying_mu_cha_zuo_1"
     # 加入其他裝置...
 }
+
+def load_secrets():
+    with open("secret.txt", "r") as f:
+        secrets = f.read().splitlines()
+        if len(secrets) == 3:
+            return secrets
+        else:
+            raise ValueError("Invalid secret.txt format. Expected 3 lines.")
+
+secrets = load_secrets()
+HA_URL = secrets[0]
+HA_APIKEY = secrets[1]
+OpenAI_APIKEY = secrets[2]
+openai.api_key = OpenAI_APIKEY
+
 def get_device_id(device_name):
     return devices.get(device_name)
 
@@ -37,6 +52,16 @@ def call_home_assistant(api_command,device):
         "content-type": "application/json",
     }
     data = {"entity_id": device}
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+
+    return response.text
+def call_home_assistant_control(text):
+    url = HA_URL+"/api/conversation/process"
+    headers = {
+        "Authorization": "Bearer "+HA_APIKEY,
+        "content-type": "application/json",
+    }
+    data = {"language": "zh-tw","text": text}
     response = requests.post(url, headers=headers, data=json.dumps(data))
 
     return response.text
