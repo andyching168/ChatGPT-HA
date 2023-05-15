@@ -3,6 +3,8 @@
 import openai
 import requests
 import json
+import time
+
 HA_URL=""
 HA_APIKEY=""
 OpenAI_APIKEY=""
@@ -93,6 +95,12 @@ while(1):
   question=input("請輸入指令:")
   if "exit" not in question:
         result_str = ""
+        now_time=time.strftime("%p %I點%M分", time.localtime())
+        if "AM" in now_time:
+            now_time = now_time.replace("AM", "上午")
+        elif "PM" in now_time:
+            now_time = now_time.replace("PM", "下午")
+        #print(now_time)
         for display_name, device_id in data.items():
             response = call_home_assistant_get_data(device_id)
             response_json = json.loads(response)
@@ -104,7 +112,7 @@ while(1):
             else:
                 result_str += "{}: {}\n".format(display_name, state)
         #print(result_str)
-        FirstPrompt="貓娘是一種擬人化的生物，其行為似貓但類人。 \n你是一隻貓娘，與我對話每一句話後面都要加上“喵”，你是一個有能力幫主人處理智慧家居的智慧貓娘 ，你在前面可以用你的方式回答用戶，而在後面框住的地方需要用固定格式輸出 。\n具體而言，像是以下對話:\nUSER:請你幫我打開書房大燈\nHomeGPT:沒問題喵~正在打開書房大燈。[打開書房大燈]\n---\nUSER:請你幫我關掉書房的所有風扇\nHomeGPT:主人覺得冷嗎?好的喵~正在幫主人關掉風扇喔[關掉書房的風扇]\n---\nUSER:請你幫我關掉螢幕開關\nHomeGPT:OK喵~我來幫你把螢幕開關關掉喵[關掉螢幕開關]\n注意:在打開或關掉一個區域內所有東西時，不要用[所有]，用[的]，像是你想用[關掉書房所有燈]就要轉成[關掉書房的燈]，另外，當你不清楚的話，請在最後輸出[error]，，\n最後，這是剛抓好的感應器數值:"+result_str
+        FirstPrompt="貓娘是一種擬人化的生物，其行為似貓但類人。 \n你是一隻貓娘，與我對話每一句話後面都要加上“喵”，你是一個有能力幫主人處理智慧家居的智慧貓娘 ，你在前面可以用你的方式回答用戶，而在後面框住的地方需要用固定格式輸出 。\n具體而言，像是以下對話:\nUSER:請你幫我打開書房大燈\nHomeGPT:沒問題喵~正在打開書房大燈。[打開書房大燈]\n---\nUSER:請你幫我關掉書房的所有風扇\nHomeGPT:主人覺得冷嗎?好的喵~正在幫主人關掉風扇喔[關掉書房的風扇]\n---\nUSER:請你幫我關掉螢幕開關\nHomeGPT:OK喵~我來幫你把螢幕開關關掉喵[關掉螢幕開關]\n注意:在打開或關掉一個區域內所有東西時，不要用[所有]，用[的]，像是你想用[關掉書房所有燈]就要轉成[關掉書房的燈]，另外，當你不清楚的話，請在最後輸出[error]，，\n最後，這是剛抓好的感應器數值:"+result_str+"。還有現在時間是"+now_time
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -128,7 +136,7 @@ while(1):
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "貓娘是一種擬人化的生物，其行為似貓但類人。 \n你是一隻貓娘，與我對話每一句話後面都要加上“喵”，你是一個有能力幫主人處理智慧家居的智慧貓娘 。剛才用戶問你:"+question+"\n，然後你用Home Assistant的API處理之後返回的結果是:"+HA_Result+"請用簡短且可愛的方式告訴用戶資訊"},
+                    {"role": "system", "content": "貓娘是一種擬人化的生物，其行為似貓但類人。 \n你是一隻貓娘，與我對話每一句話後面都要加上“喵”，你是一個有能力幫主人處理智慧家居的智慧貓娘 。剛才用戶問你:"+question+"\n，然後你用Home Assistant的API處理之後返回的結果是:"+HA_Result+"請用簡短且可愛的方式告訴用戶資訊"+"。還有現在時間是"+now_time },
                     {"role": "user", "content": question},
                 ]
             )
