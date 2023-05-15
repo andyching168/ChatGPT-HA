@@ -1,2 +1,2 @@
 # ChatGPT-HA
-串接ChatGPT和Home Assistant，使ChatGPT可以控制Home Assistant裝置
+串接ChatGPT和Home Assistant，創建一隻"賽博貓娘"，使ChatGPT可以控制和查詢Home Assistant裝置
