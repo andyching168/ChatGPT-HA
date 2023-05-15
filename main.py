@@ -22,8 +22,6 @@ HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
 openai.api_key = OpenAI_APIKEY
 
-def get_device_id(device_name):
-    return devices.get(device_name)
 
 openai.api_key = OpenAI_APIKEY
 
