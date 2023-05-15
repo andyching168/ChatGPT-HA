@@ -6,18 +6,7 @@ import json
 HA_URL=""
 HA_APIKEY=""
 OpenAI_APIKEY=""
-devices = {
-    "書房大燈": "light.da_deng",
-    "客廳大燈": "light.ke_ting_da_deng",
-    "展示櫃燈": "light.showcaselight",
-    "床頭燈": "light.chuang_tou_deng",
-    "檯燈": "light.tai_deng",
-    "紅外線小燈": "light.ir_light",
-    "螢幕燈開關": "light.ying_mu_deng_kai_guan",
-    "進風扇": "fan.jin_feng_shan",
-    "螢幕開關": "switch.ying_mu_cha_zuo_1"
-    # 加入其他裝置...
-}
+
 
 def load_secrets():
     with open("secret.txt", "r") as f:
