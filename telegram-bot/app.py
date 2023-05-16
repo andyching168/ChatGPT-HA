@@ -19,16 +19,16 @@ HA_APIKEY=""
 OpenAI_APIKEY=""
 
 data = {
-    '房間溫度': 'sensor.temperature_humidity_sensor_b721_temperature',
-    '房間濕度': 'sensor.temperature_humidity_sensor_b721_humidity',
+    '書房房間溫度': 'sensor.temperature_humidity_sensor_b721_temperature',
+    '書房房間濕度': 'sensor.temperature_humidity_sensor_b721_humidity',
     '室外溫溼度感應器-溫度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_temperature',
     '室外溫溼度感應器-濕度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_humidity',
-    '門': 'binary_sensor.men',
-    '窗戶': 'binary_sensor.chuang_hu',
-    '房間人體感應器': 'binary_sensor.fang_jian_ren_ti_gan_ying_qi_occupancy',
-    '桌機開關狀態': 'binary_sensor.zhuo_ji_kai_guan_zhuang_tai',
-    'HDMI狀態': 'sensor.hdmizhuang_tai',
-    '螢幕': 'switch.ying_mu_cha_zuo_1',
+    '書房門': 'binary_sensor.men',
+    '書房窗戶': 'binary_sensor.chuang_hu',
+    '書房房間人體感應器': 'binary_sensor.fang_jian_ren_ti_gan_ying_qi_occupancy',
+    '書房桌機開關狀態': 'binary_sensor.zhuo_ji_kai_guan_zhuang_tai',
+    '書房螢幕HDMI狀態': 'sensor.hdmizhuang_tai',
+    '書房螢幕': 'switch.ying_mu_cha_zuo_1',
     '橘5-往景安': 'sensor.ju_5_wang_jing_an',
     '橘5-往板橋': 'sensor.ju_5_wang_ban_qiao',
     '985-往新莊': 'sensor.985_wang_xin_zhuang',
@@ -42,7 +42,20 @@ data = {
     '原神洞天寶錢數': 'sensor.yuan_shen_dong_tian_bao_qian_shu',
     '原神週本減半次數(最高為3,最低為0)': 'sensor.yuan_shen_zhou_ben_jian_ban_ci_shu',
     '原神探索派遣完成數(最多為5)': 'sensor.yuan_shen_tan_suo_pai_qian_wan_cheng_shu',
-    '原神每日委託完成個數(最高為4)': 'sensor.yuan_shen_mei_ri_wei_tuo_wan_cheng_ge_shu'
+    '原神每日委託完成個數(最高為4)': 'sensor.yuan_shen_mei_ri_wei_tuo_wan_cheng_ge_shu',
+    '書房大燈': 'light.da_deng',
+    '書房檯燈': 'light.tai_deng',
+    '書房床頭燈': 'light.chuang_tou_deng',
+    '書房展示櫃燈': 'light.showcaselight',
+    '書房紅外線小燈': 'light.ir_light',
+    '書房螢幕燈開關': 'light.ying_mu_deng_kai_guan',
+    '書房風扇': 'fan.feng_shan',
+    '書房循環風扇': 'fan.xun_huan_feng_shan',
+    '書房循環扇': 'fan.xun_huan_shan',
+    '書房冷氣': 'climate.shu_fang_leng_qi',
+    '書房進風扇': 'fan.jin_feng_shan',
+    '客廳燈': 'light.ke_ting_deng',
+    '客廳窗簾': 'cover.ke_ting_chuang_lian'
 }
 def call_home_assistant_get_data(deviceID):
     url = HA_URL+"/api/states/" + deviceID
