@@ -61,9 +61,6 @@ OpenAI_APIKEY = secrets[2]
 openai.api_key = OpenAI_APIKEY
 
 
-openai.api_key = OpenAI_APIKEY
-
-
 def process_gpt_response(text):
     # 分割回答,得到API指令和裝置名稱
     api_command, device_name = text.split("]")
@@ -79,8 +76,8 @@ def call_home_assistant(api_command,device):
     }
     data = {"entity_id": device}
     response = requests.post(url, headers=headers, data=json.dumps(data))
-
     return response.text
+
 def call_home_assistant_control(text):
     url = HA_URL+"/api/conversation/process"
     headers = {
@@ -89,8 +86,9 @@ def call_home_assistant_control(text):
     }
     data = {"language": "zh-tw","text": text}
     response = requests.post(url, headers=headers, data=json.dumps(data))
-
     return response.text
+
+
 while(1):
   question=input("請輸入指令:")
   if "exit" not in question:
