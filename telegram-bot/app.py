@@ -6,13 +6,14 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update,InputFile
 from telegram.ext import Updater, Filters, CallbackContext
 from telegram.ext import MessageHandler, CommandHandler, InlineQueryHandler, CallbackQueryHandler
 import openai
 import requests
 import json
 import time
+import azure.cognitiveservices.speech as speechsdk
 
 HA_URL=""
 HA_APIKEY=""
@@ -75,15 +76,38 @@ def call_home_assistant_get_data(deviceID):
 def load_secrets():
     with open("secret.txt", "r") as f:
         secrets = f.read().splitlines()
-        if len(secrets) == 3:
+        if len(secrets) == 5:
             return secrets
         else:
-            raise ValueError("Invalid secret.txt format. Expected 3 lines.")
+            raise ValueError("Invalid secret.txt format. Expected 5 lines.")
 secrets = load_secrets()
 HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
+AzureTTS_KEY=secrets[3]
+AzureTTS_REGION=secrets[4]
 openai.api_key = OpenAI_APIKEY
+
+speech_config = speechsdk.SpeechConfig(subscription=AzureTTS_KEY, region=AzureTTS_REGION)
+audio_config = speechsdk.audio.AudioOutputConfig(filename="./file.wav")
+speech_config.speech_synthesis_voice_name='zh-CN-XiaoyiNeural'
+
+
+def azureTTS_speak(text):
+    #os.remove("file.wav")
+    speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
+    if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        print("Speech synthesized for text [{}]".format(text))
+    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_synthesis_result.cancellation_details
+        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            if cancellation_details.error_details:
+                print("Error details: {}".format(cancellation_details.error_details))
+                print("Did you set the speech resource key and region values?")
+    del speech_synthesizer
+
 
 def process_gpt_response(text):
     # 分割回答,得到API指令和裝置名稱
@@ -160,14 +184,32 @@ def message_handler(update: Update, context: CallbackContext):
         assistant_answer = response['choices'][0]['message']['content']
         #print(assistant_answer)
         if "error" in assistant_answer:
+            azureTTS_speak(assistant_answer)
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
+            voice_file = open('./file.wav', 'rb')
+            voice = InputFile(voice_file)
+            context.bot.send_voice(chat_id=update.message.chat.id, voice=voice)
+            voice_file.close()
+            os.remove("file.wav")
             #print(assistant_answer)
         elif "[" not in assistant_answer and "]" not in assistant_answer:
+            azureTTS_speak(assistant_answer)
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
+            voice_file = open('./file.wav', 'rb')
+            voice = InputFile(voice_file)
+            context.bot.send_voice(chat_id=update.message.chat.id, voice=voice)
+            voice_file.close()
+            os.remove("file.wav")
             #print(assistant_answer)
         else:
             chat_response,api_command = process_gpt_response(assistant_answer)
+            azureTTS_speak(chat_response)
+            voice_file = open('./file.wav', 'rb')
+            voice = InputFile(voice_file)
             context.bot.send_message(chat_id=update.message.chat.id, text=chat_response)
+            context.bot.send_voice(chat_id=update.message.chat.id, voice=voice)
+            voice_file.close()
+            os.remove("file.wav")
             #print(chat_response)
             #print(f"API指令: {api_command}")
             #print(f"裝置名稱: {device_name}")
@@ -181,7 +223,13 @@ def message_handler(update: Update, context: CallbackContext):
                 ]
             )
             assistant_answer = response['choices'][0]['message']['content']
+            azureTTS_speak(assistant_answer)
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
+            voice_file = open('./file.wav', 'rb')
+            voice = InputFile(voice_file)
+            context.bot.send_voice(chat_id=update.message.chat.id, voice=voice)
+            voice_file.close()
+            os.remove("file.wav")
             #print(assistant_answer)
     except Exception as e:
         logging.error("Exception occurred", exc_info=True)

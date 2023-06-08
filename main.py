@@ -4,6 +4,7 @@ import openai
 import requests
 import json
 import time
+import azure.cognitiveservices.speech as speechsdk
 
 HA_URL=""
 HA_APIKEY=""
@@ -62,16 +63,36 @@ def call_home_assistant_get_data(deviceID):
 def load_secrets():
     with open("secret.txt", "r") as f:
         secrets = f.read().splitlines()
-        if len(secrets) == 3:
+        if len(secrets) == 5:
             return secrets
         else:
-            raise ValueError("Invalid secret.txt format. Expected 3 lines.")
+            raise ValueError("Invalid secret.txt format. Expected 5 lines.")
 
 secrets = load_secrets()
 HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
+AzureTTS_KEY=secrets[3]
+AzureTTS_REGION=secrets[4]
 openai.api_key = OpenAI_APIKEY
+
+
+speech_config = speechsdk.SpeechConfig(subscription=AzureTTS_KEY, region=AzureTTS_REGION)
+audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
+speech_config.speech_synthesis_voice_name='zh-CN-XiaoyiNeural'
+speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+
+def azureTTS_speak(text):
+    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
+    if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        print("Speech synthesized for text [{}]".format(text))
+    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_synthesis_result.cancellation_details
+        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            if cancellation_details.error_details:
+                print("Error details: {}".format(cancellation_details.error_details))
+                print("Did you set the speech resource key and region values?")
 
 
 def process_gpt_response(text):
@@ -135,11 +156,14 @@ while(1):
         #print(assistant_answer)
         if "error" in assistant_answer:
             print(assistant_answer)
+            azureTTS_speak(assistant_answer)
         elif "[" not in assistant_answer and "]" not in assistant_answer:
             print(assistant_answer)
+            azureTTS_speak(assistant_answer)
         else:
             chat_response,api_command = process_gpt_response(assistant_answer)
             print(chat_response)
+            azureTTS_speak(chat_response)
             #print(f"API指令: {api_command}")
             #print(f"裝置名稱: {device_name}")
             HA_Result=call_home_assistant_control(api_command)
@@ -153,5 +177,6 @@ while(1):
             )
             assistant_answer = response['choices'][0]['message']['content']
             print(assistant_answer)
+            azureTTS_speak(assistant_answer)
   else:
         break
