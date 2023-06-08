@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 
-#程式會從.env檔案讀取telegram的token,所以要預先建好.env檔案，內容為TELEGRAM_TOKEN="<你的telegram token>"
+
 import os
 import logging
 from dotenv import load_dotenv
@@ -76,16 +76,17 @@ def call_home_assistant_get_data(deviceID):
 def load_secrets():
     with open("secret.txt", "r") as f:
         secrets = f.read().splitlines()
-        if len(secrets) == 5:
+        if len(secrets) == 6:
             return secrets
         else:
-            raise ValueError("Invalid secret.txt format. Expected 5 lines.")
+            raise ValueError("Invalid secret.txt format. Expected 6 lines.")
 secrets = load_secrets()
 HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
 AzureTTS_KEY=secrets[3]
 AzureTTS_REGION=secrets[4]
+TELEGRAM_TOKEN=secrets[5]
 openai.api_key = OpenAI_APIKEY
 
 speech_config = speechsdk.SpeechConfig(subscription=AzureTTS_KEY, region=AzureTTS_REGION)
@@ -235,7 +236,7 @@ def message_handler(update: Update, context: CallbackContext):
         logging.error("Exception occurred", exc_info=True)
     
 
-updater = Updater(os.getenv("TELEGRAM_TOKEN"))
+updater = Updater(TELEGRAM_TOKEN)
 updater.dispatcher.add_handler(MessageHandler(filters=Filters.text, callback=message_handler))
 
 if __name__ == "__main__":
