@@ -5,7 +5,6 @@
 
 import os
 import logging
-from dotenv import load_dotenv
 from telegram import Update,InputFile
 from telegram.ext import Updater, Filters, CallbackContext
 from telegram.ext import MessageHandler, CommandHandler, InlineQueryHandler, CallbackQueryHandler
@@ -13,15 +12,16 @@ import openai
 import requests
 import json
 import time
-import azure.cognitiveservices.speech as speechsdk
+import edge_tts
+import asyncio
 
 HA_URL=""
 HA_APIKEY=""
 OpenAI_APIKEY=""
 
 data = {
-    '書房房間溫度': 'sensor.temperature_humidity_sensor_b721_temperature',
-    '書房房間濕度': 'sensor.temperature_humidity_sensor_b721_humidity',
+    '書房房間溫度': 'sensor.atc_b721_temperature',
+    '書房房間濕度': 'sensor.atc_b721_humidity',
     '室外溫溼度感應器-溫度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_temperature',
     '室外溫溼度感應器-濕度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_humidity',
     '書房門(off為關上，on為開著)': 'binary_sensor.men',
@@ -76,7 +76,7 @@ def call_home_assistant_get_data(deviceID):
 def load_secrets():
     with open("secret.txt", "r") as f:
         secrets = f.read().splitlines()
-        if len(secrets) == 6:
+        if len(secrets) == 4:
             return secrets
         else:
             raise ValueError("Invalid secret.txt format. Expected 6 lines.")
@@ -84,30 +84,19 @@ secrets = load_secrets()
 HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
-AzureTTS_KEY=secrets[3]
-AzureTTS_REGION=secrets[4]
-TELEGRAM_TOKEN=secrets[5]
+TELEGRAM_TOKEN=secrets[3]
 openai.api_key = OpenAI_APIKEY
 
-speech_config = speechsdk.SpeechConfig(subscription=AzureTTS_KEY, region=AzureTTS_REGION)
-audio_config = speechsdk.audio.AudioOutputConfig(filename="./file.wav")
-speech_config.speech_synthesis_voice_name='zh-CN-XiaoyiNeural'
 
+voice = 'zh-CN-XiaoyiNeural'
+output = './file.wav'
+rate = '-4%'
+volume = '+0%'
 
-def azureTTS_speak(text):
+async def azureTTS_speak(text):
     #os.remove("file.wav")
-    speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
-    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
-    if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-        print("Speech synthesized for text [{}]".format(text))
-    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
-        cancellation_details = speech_synthesis_result.cancellation_details
-        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-        if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            if cancellation_details.error_details:
-                print("Error details: {}".format(cancellation_details.error_details))
-                print("Did you set the speech resource key and region values?")
-    del speech_synthesizer
+    tts = edge_tts.Communicate(text=text, voice=voice, rate=rate, volume=volume)
+    await tts.save(output)
 
 
 def process_gpt_response(text):
@@ -148,8 +137,6 @@ def call_home_assistant_control(text):
         return None
 
     return response.text
-# Load environment variables from .env file
-load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -185,7 +172,7 @@ def message_handler(update: Update, context: CallbackContext):
         assistant_answer = response['choices'][0]['message']['content']
         #print(assistant_answer)
         if "error" in assistant_answer:
-            azureTTS_speak(assistant_answer)
+            asyncio.run(azureTTS_speak(assistant_answer))
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
             voice_file = open('./file.wav', 'rb')
             voice = InputFile(voice_file)
@@ -194,7 +181,7 @@ def message_handler(update: Update, context: CallbackContext):
             os.remove("file.wav")
             #print(assistant_answer)
         elif "[" not in assistant_answer and "]" not in assistant_answer:
-            azureTTS_speak(assistant_answer)
+            asyncio.run(azureTTS_speak(assistant_answer))
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
             voice_file = open('./file.wav', 'rb')
             voice = InputFile(voice_file)
@@ -204,7 +191,7 @@ def message_handler(update: Update, context: CallbackContext):
             #print(assistant_answer)
         else:
             chat_response,api_command = process_gpt_response(assistant_answer)
-            azureTTS_speak(chat_response)
+            asyncio.run(azureTTS_speak(chat_response))
             voice_file = open('./file.wav', 'rb')
             voice = InputFile(voice_file)
             context.bot.send_message(chat_id=update.message.chat.id, text=chat_response)
@@ -224,7 +211,7 @@ def message_handler(update: Update, context: CallbackContext):
                 ]
             )
             assistant_answer = response['choices'][0]['message']['content']
-            azureTTS_speak(assistant_answer)
+            asyncio.run(azureTTS_speak(assistant_answer))
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
             voice_file = open('./file.wav', 'rb')
             voice = InputFile(voice_file)

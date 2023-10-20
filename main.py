@@ -4,15 +4,16 @@ import openai
 import requests
 import json
 import time
-import azure.cognitiveservices.speech as speechsdk
-
+import edge_tts
+import asyncio
+import pygame
 HA_URL=""
 HA_APIKEY=""
 OpenAI_APIKEY=""
 
 data = {
-    '書房房間溫度': 'sensor.temperature_humidity_sensor_b721_temperature',
-    '書房房間濕度': 'sensor.temperature_humidity_sensor_b721_humidity',
+    '書房房間溫度': 'sensor.atc_b721_temperature',
+    '書房房間濕度': 'sensor.atc_b721_humidity',
     '室外溫溼度感應器-溫度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_temperature',
     '室外溫溼度感應器-濕度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_humidity',
     '書房門': 'binary_sensor.men',
@@ -63,7 +64,7 @@ def call_home_assistant_get_data(deviceID):
 def load_secrets():
     with open("secret.txt", "r") as f:
         secrets = f.read().splitlines()
-        if len(secrets) == 5:
+        if len(secrets) == 3:
             return secrets
         else:
             raise ValueError("Invalid secret.txt format. Expected 5 lines.")
@@ -72,27 +73,18 @@ secrets = load_secrets()
 HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
-AzureTTS_KEY=secrets[3]
-AzureTTS_REGION=secrets[4]
 openai.api_key = OpenAI_APIKEY
 
+voice = 'zh-CN-XiaoyiNeural'
+output = './file.mp3'
+rate = '-4%'
+volume = '+0%'
 
-speech_config = speechsdk.SpeechConfig(subscription=AzureTTS_KEY, region=AzureTTS_REGION)
-audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
-speech_config.speech_synthesis_voice_name='zh-CN-XiaoyiNeural'
-speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
-
-def azureTTS_speak(text):
-    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
-    if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-        print("Speech synthesized for text [{}]".format(text))
-    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
-        cancellation_details = speech_synthesis_result.cancellation_details
-        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-        if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            if cancellation_details.error_details:
-                print("Error details: {}".format(cancellation_details.error_details))
-                print("Did you set the speech resource key and region values?")
+async def azureTTS_speak(text):
+    #os.remove("file.wav")
+    tts = edge_tts.Communicate(text=text, voice=voice, rate=rate, volume=volume)
+    await tts.save(output)
+    
 
 
 def process_gpt_response(text):
@@ -121,7 +113,9 @@ def call_home_assistant_control(text):
     data = {"language": "zh-tw","text": text}
     response = requests.post(url, headers=headers, data=json.dumps(data))
     return response.text
-
+pygame.init() 
+pygame.mixer.init()
+pygame.mixer.music.set_volume(1.0)
 
 while(1):
   question=input("請輸入指令:")
@@ -156,14 +150,41 @@ while(1):
         #print(assistant_answer)
         if "error" in assistant_answer:
             print(assistant_answer)
-            azureTTS_speak(assistant_answer)
+            asyncio.run(azureTTS_speak(assistant_answer))
+            pygame.mixer.music.load('file.mp3')
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                pygame.time.delay(100)
+            pygame.mixer.music.unload()
         elif "[" not in assistant_answer and "]" not in assistant_answer:
             print(assistant_answer)
-            azureTTS_speak(assistant_answer)
+            asyncio.run(azureTTS_speak(assistant_answer))
+            pygame.mixer.music.load('file.mp3')
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                pygame.time.delay(100)
+            pygame.mixer.music.unload()
         else:
             chat_response,api_command = process_gpt_response(assistant_answer)
             print(chat_response)
-            azureTTS_speak(chat_response)
+            asyncio.run(azureTTS_speak(chat_response))
+            pygame.mixer.music.load('file.mp3')
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                pygame.time.delay(100)
+            pygame.mixer.music.unload()
             #print(f"API指令: {api_command}")
             #print(f"裝置名稱: {device_name}")
             HA_Result=call_home_assistant_control(api_command)
@@ -177,6 +198,15 @@ while(1):
             )
             assistant_answer = response['choices'][0]['message']['content']
             print(assistant_answer)
-            azureTTS_speak(assistant_answer)
+            asyncio.run(azureTTS_speak(assistant_answer))
+            pygame.mixer.music.load('file.mp3')
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                pygame.time.delay(100)
+            pygame.mixer.music.unload()
   else:
         break
