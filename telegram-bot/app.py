@@ -150,6 +150,14 @@ def message_handler(update: Update, context: CallbackContext):
         elif "PM" in now_time:
             now_time = now_time.replace("PM", "下午")
         #print(now_time)
+        assistant_answer="稍等一下，正在幫你查詢喵~"
+        asyncio.run(azureTTS_speak(assistant_answer))
+        context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
+        voice_file = open('./file.wav', 'rb')
+        voice = InputFile(voice_file)
+        context.bot.send_voice(chat_id=update.message.chat.id, voice=voice)
+        voice_file.close()
+        os.remove("file.wav")
         for display_name, device_id in data.items():
             response = call_home_assistant_get_data(device_id)
             response_json = json.loads(response)
