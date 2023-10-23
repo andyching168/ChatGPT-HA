@@ -58,6 +58,7 @@ data = {
     '客廳燈': 'light.ke_ting_deng',
     '客廳窗簾': 'cover.ke_ting_chuang_lian'
 }
+sensorResult_file = "sensorResult.txt" 
 def call_home_assistant_get_data(deviceID):
     url = HA_URL+"/api/states/" + deviceID
     headers = {
@@ -158,16 +159,8 @@ def message_handler(update: Update, context: CallbackContext):
         context.bot.send_voice(chat_id=update.message.chat.id, voice=voice)
         voice_file.close()
         os.remove("file.wav")
-        for display_name, device_id in data.items():
-            response = call_home_assistant_get_data(device_id)
-            response_json = json.loads(response)
-            state = response_json['state']
-            # Check if 'unit_of_measurement' is in the 'attributes' dictionary
-            if 'unit_of_measurement' in response_json['attributes']:
-                unit = response_json['attributes']['unit_of_measurement']
-                result_str += "{}: {} {}\n".format(display_name, state, unit)
-            else:
-                result_str += "{}: {}\n".format(display_name, state)
+        with open(sensorResult_file) as f:
+            result_str = f.read()
         #print(result_str)
         FirstPrompt="貓娘是一種擬人化的生物,其行為似貓但類人。 \n你是一隻貓娘,與我對話每一句話後面都要加上“喵”,你是一個有能力幫主人處理智慧家居的智慧貓娘 ,你在前面可以用你的方式回答用戶,而在後面框住的地方需要用固定格式輸出 。\n具體而言,像是以下對話:\nUSER:請你幫我打開書房大燈\nHomeGPT:沒問題喵~正在打開書房大燈。[打開書房大燈]\n---\nUSER:請你幫我關掉書房的所有風扇\nHomeGPT:主人覺得冷嗎?好的喵~正在幫主人關掉風扇喔[關掉書房的風扇]\n---\nUSER:請你幫我關掉螢幕開關\nHomeGPT:OK喵~我來幫你把螢幕開關關掉喵[關掉螢幕開關]\n注意:你在打開或關掉一個區域內所有東西時,不要用[所有],用[的],像是你想用[關掉書房所有燈]就要轉成[關掉書房的燈],另外,當你不清楚的話,請在最後輸出[error],,\n最後,這是剛抓好的感應器數值:"+result_str+"。還有現在時間是"+now_time
         response = openai.ChatCompletion.create(
@@ -230,13 +223,29 @@ def message_handler(update: Update, context: CallbackContext):
     except Exception as e:
         logging.error("Exception occurred", exc_info=True)
     
-
+def keep_update_sensor_data():
+  while True:
+        result_str = ""
+        for display_name, device_id in data.items():
+            response = call_home_assistant_get_data(device_id)
+            response_json = json.loads(response)
+            state = response_json['state']
+            # Check if 'unit_of_measurement' is in the 'attributes' dictionary
+            if 'unit_of_measurement' in response_json['attributes']:
+                unit = response_json['attributes']['unit_of_measurement']
+                result_str += "{}: {} {}\n".format(display_name, state, unit)
+            else:
+                result_str += "{}: {}\n".format(display_name, state)
+        with open(sensorResult_file, "w") as f:
+            f.write(result_str)
+        time.sleep(30)
 updater = Updater(TELEGRAM_TOKEN)
 updater.dispatcher.add_handler(MessageHandler(filters=Filters.text, callback=message_handler))
 
 if __name__ == "__main__":
     try:
         updater.start_polling()
+        keep_update_sensor_data()
         updater.idle()
     except Exception as e:
         logging.error("Exception occurred", exc_info=True)
