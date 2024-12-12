@@ -1,12 +1,14 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import openai
+from openai import OpenAI
+
 import requests
 import json
 import time
 import edge_tts
 import asyncio
 import pygame
+
 HA_URL=""
 HA_APIKEY=""
 OpenAI_APIKEY=""
@@ -14,52 +16,34 @@ OpenAI_APIKEY=""
 data = {
     '書房房間溫度': 'sensor.atc_b721_temperature',
     '書房房間濕度': 'sensor.atc_b721_humidity',
-    '室外溫溼度感應器-溫度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_temperature',
-    '室外溫溼度感應器-濕度': 'sensor.shi_wai_wen_shi_du_gan_ying_qi_humidity',
     '書房門': 'binary_sensor.men',
     '書房窗戶': 'binary_sensor.chuang_hu',
     '書房房間人體感應器': 'binary_sensor.fang_jian_ren_ti_gan_ying_qi_occupancy',
     '書房桌機開關狀態': 'binary_sensor.zhuo_ji_kai_guan_zhuang_tai',
     '書房螢幕HDMI狀態': 'sensor.hdmizhuang_tai',
     '書房螢幕': 'switch.ying_mu_cha_zuo_1',
-    '橘5-往景安(數字為分鐘)': 'sensor.ju_5_wang_jing_an',
-    '橘5-往板橋(數字為分鐘)': 'sensor.ju_5_wang_ban_qiao',
-    '985-往新莊(數字為分鐘)': 'sensor.985_wang_xin_zhuang',
-    '985-往台北(數字為分鐘)': 'sensor.985_wang_tai_bei',
-    '307-往板橋(數字為分鐘)': 'sensor.307_wang_ban_qiao',
-    '307-往台北(數字為分鐘)': 'sensor.307_wang_tai_bei',
-    '藍18-往新莊(數字為分鐘)': 'sensor.lan_18_wang_xin_zhuang',
     '室外溫度': 'sensor.shi_wai_wen_du',
     '客廳溫度': 'sensor.ke_ting_wen_du',
-    '原神樹脂量(160代表已滿)': 'sensor.yuan_shen_shu_zhi_liang',
-    '原神洞天寶錢數': 'sensor.yuan_shen_dong_tian_bao_qian_shu',
-    '原神週本減半次數(最高為3,最低為0)': 'sensor.yuan_shen_zhou_ben_jian_ban_ci_shu',
-    '原神探索派遣完成數(最多為5)': 'sensor.yuan_shen_tan_suo_pai_qian_wan_cheng_shu',
-    '原神每日委託完成個數(最高為4)': 'sensor.yuan_shen_mei_ri_wei_tuo_wan_cheng_ge_shu',
     '書房大燈': 'light.da_deng',
     '書房檯燈': 'light.tai_deng',
     '書房床頭燈': 'light.chuang_tou_deng',
     '書房展示櫃燈': 'light.showcaselight',
-    '書房紅外線小燈': 'light.ir_light',
     '書房螢幕燈開關': 'light.ying_mu_deng_kai_guan',
     '書房風扇': 'fan.feng_shan',
-    '書房循環風扇': 'fan.xun_huan_feng_shan',
     '書房循環扇': 'fan.xun_huan_shan',
     '書房冷氣': 'climate.shu_fang_leng_qi',
-    '書房進風扇': 'fan.jin_feng_shan',
     '客廳燈': 'light.ke_ting_deng',
     '客廳窗簾': 'cover.ke_ting_chuang_lian'
 }
 
 def call_home_assistant_get_data(deviceID):
-    url = HA_URL+"/api/states/" + deviceID
+    url = HA_URL + "/api/states/" + deviceID
     headers = {
-        "Authorization": "Bearer "+HA_APIKEY,
+        "Authorization": "Bearer " + HA_APIKEY,
     }
     response = requests.get(url, headers=headers)
 
     return response.text
-
 
 def load_secrets():
     with open("secret.txt", "r") as f:
@@ -73,31 +57,20 @@ secrets = load_secrets()
 HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
-openai.api_key = OpenAI_APIKEY
-
+client = OpenAI(api_key=OpenAI_APIKEY)
 voice = 'zh-CN-XiaoyiNeural'
 output = './file.mp3'
 rate = '-4%'
 volume = '+0%'
 
 async def azureTTS_speak(text):
-    #os.remove("file.wav")
     tts = edge_tts.Communicate(text=text, voice=voice, rate=rate, volume=volume)
     await tts.save(output)
-    
 
-
-def process_gpt_response(text):
-    # 分割回答,得到API指令和裝置名稱
-    api_command, device_name = text.split("]")
-    api_command = api_command.split("[")
-    Chat_Response = api_command[0]
-
-    return Chat_Response,api_command[1]
-def call_home_assistant(api_command,device):
-    url = HA_URL+"/api/services/" + api_command
+def call_home_assistant(api_command, device):
+    url = HA_URL + "/api/services/" + api_command
     headers = {
-        "Authorization": "Bearer "+HA_APIKEY,
+        "Authorization": "Bearer " + HA_APIKEY,
         "content-type": "application/json",
     }
     data = {"entity_id": device}
@@ -113,101 +86,101 @@ def call_home_assistant_control(text):
     data = {"language": "zh-tw","text": text}
     response = requests.post(url, headers=headers, data=json.dumps(data))
     return response.text
-pygame.init() 
+
+pygame.init()
 pygame.mixer.init()
 pygame.mixer.music.set_volume(1.0)
 
-while(1):
-  question=input("請輸入指令:")
-  if "exit" not in question:
+while True:
+    question = input("請輸入指令:")
+    if "exit" not in question:
         result_str = ""
-        now_time=time.strftime("%Y-%m-%d,%p %I:%M", time.localtime())
+        now_time = time.strftime("%Y-%m-%d,%p %I:%M", time.localtime())
         if "AM" in now_time:
             now_time = now_time.replace("AM", "上午")
         elif "PM" in now_time:
             now_time = now_time.replace("PM", "下午")
-        #print(now_time)
         for display_name, device_id in data.items():
             response = call_home_assistant_get_data(device_id)
             response_json = json.loads(response)
             state = response_json['state']
-            # Check if 'unit_of_measurement' is in the 'attributes' dictionary
             if 'unit_of_measurement' in response_json['attributes']:
                 unit = response_json['attributes']['unit_of_measurement']
-                result_str += "{}: {} {}\n".format(display_name, state, unit)
+                result_str += f"{display_name}: {state} {unit}\n"
             else:
-                result_str += "{}: {}\n".format(display_name, state)
-        #print(result_str)
-        FirstPrompt="貓娘是一種擬人化的生物,其行為似貓但類人。 \n你是一隻貓娘,與我對話每一句話後面都要加上“喵”,你是一個有能力幫主人處理智慧家居的智慧貓娘 ,你在前面可以用你的方式回答用戶,而在後面框住的地方需要用固定格式輸出 。\n具體而言,像是以下對話:\nUSER:請你幫我打開書房大燈\nHomeGPT:沒問題喵~正在打開書房大燈。[打開書房大燈]\n---\nUSER:請你幫我關掉書房的所有風扇\nHomeGPT:主人覺得冷嗎?好的喵~正在幫主人關掉風扇喔[關掉書房的風扇]\n---\nUSER:請你幫我關掉螢幕開關\nHomeGPT:OK喵~我來幫你把螢幕開關關掉喵[關掉螢幕開關]\n注意:你在打開或關掉一個區域內所有東西時,不要用[所有],用[的],像是你想用[關掉書房所有燈]就要轉成[關掉書房的燈],另外,當你不清楚的話,請在最後輸出[error],,\n最後,這是剛抓好的感應器數值:"+result_str+"。還有現在時間是"+now_time
-        print(FirstPrompt)
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+                result_str += f"{display_name}: {state}\n"
+
+        FirstPrompt = (
+            "貓娘是一種擬人化的生物,其行為似貓但類人。\n"
+            "你是一隻貓娘,與我對話每一句話後面都要加上“喵”"
+            "你是一個有能力幫主人處理智慧家居的智慧貓娘。剛才抓好的感應器數值如下:\n"
+            f"{result_str}現在時間是{now_time}\n"
+            "請以JSON格式回應，並且回應要拆分成三類：\n"
+            "1. 對使用者回應 (key: '對使用者回應')\n"
+            "2. 狀態 (key: '狀態')\n"
+            "3. 給home assistant之回應 (key: '給home assistant之回應')\n"
+            "回應格式: {\"type\": \"json_object\"},\n"
+            "像是以下對話(使用者只是詢問沒有控制時狀態和給ha回應留空）：\n"
+            "使用者：書房大燈是開著的嗎？回答： 對使用者回應：書房大燈是開的的喵 狀態:\"\" 給Home assistant之回應:\"\" \n"
+            "以及(使用者控制時，狀態和給ha回應）:\n"
+            "使用者：打開書房大燈？回答： 對使用者回應：好的，正在打開書房大燈 狀態:\"control\" 給Home assistant之回應:\"打開書房大燈\" "
+        )
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": FirstPrompt},
                 {"role": "user", "content": question},
             ]
         )
-        assistant_answer = response['choices'][0]['message']['content']
-        #print(assistant_answer)
-        if "error" in assistant_answer:
-            print(assistant_answer)
-            asyncio.run(azureTTS_speak(assistant_answer))
-            pygame.mixer.music.load('file.mp3')
+        assistant_answer = response.choices[0].message.content
+        try:
+            response_json = json.loads(assistant_answer)
+            user_reply = response_json.get("對使用者回應", "無回應")
+            ha_command = response_json.get("狀態", {})
+            ha_reply = response_json.get("給home assistant之回應", "")
+
+            print(user_reply)
+            asyncio.run(azureTTS_speak(user_reply))
+            pygame.mixer.music.load(output)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy():
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         pygame.quit()
-                        sys.exit()
-                pygame.time.delay(100)
-            pygame.mixer.music.unload()
-        elif "[" not in assistant_answer and "]" not in assistant_answer:
-            print(assistant_answer)
-            asyncio.run(azureTTS_speak(assistant_answer))
-            pygame.mixer.music.load('file.mp3')
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-                pygame.time.delay(100)
-            pygame.mixer.music.unload()
-        else:
-            chat_response,api_command = process_gpt_response(assistant_answer)
-            print(chat_response)
-            asyncio.run(azureTTS_speak(chat_response))
-            pygame.mixer.music.load('file.mp3')
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-                pygame.time.delay(100)
-            pygame.mixer.music.unload()
-            #print(f"API指令: {api_command}")
-            #print(f"裝置名稱: {device_name}")
-            HA_Result=call_home_assistant_control(api_command)
-            #print(HA_Result)
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "貓娘是一種擬人化的生物,其行為似貓但類人。 \n你是一隻貓娘,與我對話每一句話後面都要加上“喵”,你是一個有能力幫主人處理智慧家居的智慧貓娘 。剛才用戶問你:"+question+"\n,然後你用Home Assistant的API處理之後返回的結果是:"+HA_Result+"請用簡短且可愛的方式告訴用戶資訊" },
-                    {"role": "user", "content": question},
-                ]
-            )
-            assistant_answer = response['choices'][0]['message']['content']
-            print(assistant_answer)
-            asyncio.run(azureTTS_speak(assistant_answer))
-            pygame.mixer.music.load('file.mp3')
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-                pygame.time.delay(100)
-            pygame.mixer.music.unload()
-  else:
+            if ha_command:
+                ha_result = call_home_assistant_control(ha_reply)
+                #print(f"{ha_reply}: {ha_result}")
+
+                confirm_prompt = (
+                    "貓娘是一種擬人化的生物,其行為似貓但類人。\n"
+                    "你是一隻貓娘,與我對話每一句話後面都要加上“喵”,"
+                    "剛才用戶請求的操作已完成，請基於以下執行結果生成回覆:\n"
+                    f"用戶請求: {question}\n執行結果: {ha_result}"
+                )
+
+                confirm_response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": confirm_prompt},
+                        {"role": "user", "content": question},
+                    ]
+                )
+                confirm_answer = confirm_response.choices[0].message.content
+
+                print(confirm_answer)
+                asyncio.run(azureTTS_speak(confirm_answer))
+                pygame.mixer.music.load(output)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            pygame.quit()
+                            sys.exit()
+                    pygame.time.delay(100)
+                pygame.mixer.music.unload()
+
+        except json.JSONDecodeError:
+            print("回應無法解析為JSON:", assistant_answer)
+    else:
         break

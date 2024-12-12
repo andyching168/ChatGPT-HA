@@ -8,7 +8,9 @@ import logging
 from telegram import Update,InputFile
 from telegram.ext import Updater, Filters, CallbackContext
 from telegram.ext import MessageHandler, CommandHandler, InlineQueryHandler, CallbackQueryHandler
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=OpenAI_APIKEY)
 import requests
 import json
 import time
@@ -86,7 +88,6 @@ HA_URL = secrets[0]
 HA_APIKEY = secrets[1]
 OpenAI_APIKEY = secrets[2]
 TELEGRAM_TOKEN=secrets[3]
-openai.api_key = OpenAI_APIKEY
 
 
 voice = 'zh-CN-XiaoyiNeural'
@@ -163,14 +164,12 @@ def message_handler(update: Update, context: CallbackContext):
             result_str = f.read()
         #print(result_str)
         FirstPrompt="貓娘是一種擬人化的生物,其行為似貓但類人。 \n你是一隻貓娘,與我對話每一句話後面都要加上“喵”,你是一個有能力幫主人處理智慧家居的智慧貓娘 ,你在前面可以用你的方式回答用戶,而在後面框住的地方需要用固定格式輸出 。\n具體而言,像是以下對話:\nUSER:請你幫我打開書房大燈\nHomeGPT:沒問題喵~正在打開書房大燈。[打開書房大燈]\n---\nUSER:請你幫我關掉書房的所有風扇\nHomeGPT:主人覺得冷嗎?好的喵~正在幫主人關掉風扇喔[關掉書房的風扇]\n---\nUSER:請你幫我關掉螢幕開關\nHomeGPT:OK喵~我來幫你把螢幕開關關掉喵[關掉螢幕開關]\n注意:你在打開或關掉一個區域內所有東西時,不要用[所有],用[的],像是你想用[關掉書房所有燈]就要轉成[關掉書房的燈],另外,當你不清楚的話,請在最後輸出[error],,\n最後,這是剛抓好的感應器數值:"+result_str+"。還有現在時間是"+now_time
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": FirstPrompt},
-                {"role": "user", "content": question},
-            ]
-        )
-        assistant_answer = response['choices'][0]['message']['content']
+        response = client.chat.completions.create(model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": FirstPrompt},
+            {"role": "user", "content": question},
+        ])
+        assistant_answer = response.choices[0].message.content
         #print(assistant_answer)
         if "error" in assistant_answer:
             asyncio.run(azureTTS_speak(assistant_answer))
@@ -204,14 +203,12 @@ def message_handler(update: Update, context: CallbackContext):
             #print(f"裝置名稱: {device_name}")
             HA_Result=call_home_assistant_control(api_command)
             #print(HA_Result)
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "貓娘是一種擬人化的生物,其行為似貓但類人。 \n你是一隻貓娘,與我對話每一句話後面都要加上“喵”,你是一個有能力幫主人處理智慧家居的智慧貓娘 。剛才用戶問你:"+question+"\n,然後你用Home Assistant的API處理之後返回的結果是:"+HA_Result+"請用簡短且可愛的方式告訴用戶資訊" },
-                    {"role": "user", "content": question},
-                ]
-            )
-            assistant_answer = response['choices'][0]['message']['content']
+            response = client.chat.completions.create(model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "貓娘是一種擬人化的生物,其行為似貓但類人。 \n你是一隻貓娘,與我對話每一句話後面都要加上“喵”,你是一個有能力幫主人處理智慧家居的智慧貓娘 。剛才用戶問你:"+question+"\n,然後你用Home Assistant的API處理之後返回的結果是:"+HA_Result+"請用簡短且可愛的方式告訴用戶資訊" },
+                {"role": "user", "content": question},
+            ])
+            assistant_answer = response.choices[0].message.content
             asyncio.run(azureTTS_speak(assistant_answer))
             context.bot.send_message(chat_id=update.message.chat.id, text=assistant_answer)
             voice_file = open('./file.wav', 'rb')
@@ -222,7 +219,7 @@ def message_handler(update: Update, context: CallbackContext):
             #print(assistant_answer)
     except Exception as e:
         logging.error("Exception occurred", exc_info=True)
-    
+
 def keep_update_sensor_data():
   while True:
         result_str = ""
